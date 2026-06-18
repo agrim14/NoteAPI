@@ -35,16 +35,7 @@ public class NoteService {
 
     public String addNote(String text) {
 
-        String username =
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication()
-                        .getName();
-
-        User user =
-                userRepository
-                        .findByUsername(username)
-                        .orElseThrow();
+        User user = getLoggedInUser();
 
         Note note = new Note();
 
@@ -60,16 +51,7 @@ public class NoteService {
 
     public List<Note> getNotes() {
 
-        String username =
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication()
-                        .getName();
-
-        User user =
-                userRepository
-                        .findByUsername(username)
-                        .orElseThrow();
+        User user = getLoggedInUser();
 
         return noteRepository.findByUser(user);
     }
@@ -77,53 +59,91 @@ public class NoteService {
 
     public String deleteNote(int id) {
 
-        if (noteRepository.existsById(id)) {
+        User user = getLoggedInUser();
 
-            noteRepository.deleteById(id);
-
-            return "Note deleted successfully";
-        }
-
-        return "Note not found";
-    }
-
-
-    public String updateNote(int id, String text) {
-
-        Optional<Note> optionalNote =
+        Optional<Note> optional =
                 noteRepository.findById(id);
 
-        if (optionalNote.isPresent()) {
+        if (optional.isEmpty()) {
 
-            Note note = optionalNote.get();
-
-            note.setText(text);
-
-            noteRepository.save(note);
-
-            return "Note updated successfully";
+            return "Note not found";
         }
 
-        return "Note not found";
+        Note note = optional.get();
+
+        if (note.getUser().getId() != user.getId()) {
+
+            return "Access denied";
+        }
+
+        noteRepository.delete(note);
+
+        return "Note deleted successfully";
     }
 
 
-    public List<Note> searchNotes(String text) {
+    public String updateNote(
+            int id,
+            String text
+    ) {
 
-        return noteRepository.findByTextContaining(text);
+        User user = getLoggedInUser();
+
+        Optional<Note> optional =
+                noteRepository.findById(id);
+
+        if (optional.isEmpty()) {
+
+            return "Note not found";
+        }
+
+        Note note = optional.get();
+
+        if (note.getUser().getId() != user.getId()) {
+
+            return "Access denied";
+        }
+
+        note.setText(text);
+
+        noteRepository.save(note);
+
+        return "Note updated successfully";
+    }
+
+
+    public List<Note> searchNotes(
+            String text
+    ) {
+
+        User user = getLoggedInUser();
+
+        return noteRepository
+                .findByUser(user)
+                .stream()
+                .filter(
+                        note ->
+                                note.getText()
+                                        .toLowerCase()
+                                        .contains(
+                                                text.toLowerCase()
+                                        )
+                )
+                .toList();
     }
 
 
     public List<NoteResponse> getNoteResponses() {
 
-        return noteRepository
-                .findAll()
+        return getNotes()
                 .stream()
-                .map(note ->
-                        new NoteResponse(
-                                note.getId(),
-                                note.getText()
-                        ))
+                .map(
+                        note ->
+                                new NoteResponse(
+                                        note.getId(),
+                                        note.getText()
+                                )
+                )
                 .toList();
     }
 
@@ -133,28 +153,54 @@ public class NoteService {
             int size
     ) {
 
-        return noteRepository
-                .findAll(
-                        PageRequest.of(
-                                page,
-                                size
-                        )
-                )
-                .getContent();
+        return getNotes()
+                .stream()
+                .skip((long) page * size)
+                .limit(size)
+                .toList();
     }
 
 
     public List<Note> getNotesSorted() {
 
-        return noteRepository.findAll(
-                Sort.by("text")
-        );
+        return getNotes()
+                .stream()
+                .sorted(
+                        (a, b) ->
+                                a.getText()
+                                        .compareTo(
+                                                b.getText()
+                                        )
+                )
+                .toList();
     }
 
 
-    public List<Note> getNotesExact(String text) {
+    public List<Note> getNotesExact(
+            String text
+    ) {
 
-        return noteRepository
-                .getNotesByExactText(text);
+        return getNotes()
+                .stream()
+                .filter(
+                        note ->
+                                note.getText()
+                                        .equals(text)
+                )
+                .toList();
+    }
+
+
+    private User getLoggedInUser() {
+
+        String username =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+                        .getName();
+
+        return userRepository
+                .findByUsername(username)
+                .orElseThrow();
     }
 }

@@ -64,9 +64,11 @@ public class HelloController {
 
 
     @GetMapping("/notes")
-    public ResponseEntity<List<Note>> getNotes() {
+    public ResponseEntity<List<NoteResponse>> getNotes() {
 
-        return ResponseEntity.ok(noteService.getNotes());
+        return ResponseEntity.ok(
+                noteService.getNoteResponses()
+        );
     }
 
 
