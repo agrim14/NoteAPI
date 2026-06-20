@@ -1,33 +1,39 @@
 package com.agrim.notesapi.exception;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice
+import org.springframework.web.bind.annotation.ControllerAdvice;
+
+import org.springframework.web.bind.annotation.ExceptionHandler;
+
+@ControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<String> handleValidationException(
-            MethodArgumentNotValidException ex) {
-
-        String errorMessage =
-                ex.getBindingResult()
-                        .getFieldError()
-                        .getDefaultMessage();
-
+    @ExceptionHandler(
+            NoteNotFoundException.class
+    )
+    public ResponseEntity<String>
+    handleNote(
+            NoteNotFoundException ex
+    ) {
         return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(errorMessage);
+                .status(404)
+                .body(
+                        ex.getMessage()
+                );
     }
-    @ExceptionHandler(NoteNotFoundException.class)
-    public ResponseEntity<String> handleNoteNotFound(
-            NoteNotFoundException ex) {
-
+    @ExceptionHandler(
+            RuntimeException.class
+    )
+    public ResponseEntity<String>
+    handleRuntime(
+            RuntimeException ex
+    ) {
         return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(ex.getMessage());
+                .badRequest()
+                .body(
+                        ex.getMessage()
+                );
     }
+
 }
